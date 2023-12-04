@@ -26,6 +26,8 @@ AeroForecast relies on data sourced from the [National Oceanic and Atmospheric A
 ## Getting Started 🛠️
 
 ### 1) Install the required packages
+We use Python version 3.11.5, but any version >= 3.10 should work.
+
 For ease of use, we have included requirements.txt. Run the below commands from within the project root directory to install the required dependencies.
 
 ```bash
