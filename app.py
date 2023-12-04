@@ -102,7 +102,7 @@ def get_airport_name(flight_data):
 
     dep_airport_name = data["departure"]["airport"]["name"]
     dep_city = data["departure"]["airport"]["municipalityName"]
-    arr_airport_name = data["arrival"]["airport"]["iata"]
+    arr_airport_name = data["arrival"]["airport"]["name"]
     arr_city = data["arrival"]["airport"]["municipalityName"]
     arr_iata = data["arrival"]["airport"]["iata"]
     dep_iata = data["departure"]["airport"]["iata"]
