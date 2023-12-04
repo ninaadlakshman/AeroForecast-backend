@@ -26,14 +26,17 @@ encoder_reversed = {v: k for k, v in encoder.items()}
 encoder_origin_reversed = {v: k for k, v in encoder_origin.items()}
 encoder_dept_reversed = {v: k for k, v in encoder_dept.items()}
 
-def get_flight_info(flight_number, airlabs_api_key):
+def get_flight_info(flight_number, flight_date, airlabs_api_key):
     """
     Fetch flight information from AirLabs API.
     """
     # url = "https://airlabs.co/api/v9/flight?flight_iata={flight_number}&api_key={airlabs_api_key}"
+    headers = {"X-RapidAPI-Key": airlabs_api_key,
+               "X-RapidAPI-Host": "aerodatabox.p.rapidapi.com"}
+    url = f'https://aerodatabox.p.rapidapi.com/flights/number/{flight_number}/{flight_date}'
 
-    url = f"https://airlabs.co/api/v9/flight?flight_iata={flight_number}&api_key={airlabs_api_key}"
-    response = requests.get(url)
+    #url_old = f"https://airlabs.co/api/v9/flight?flight_iata={flight_number}&api_key={airlabs_api_key}"
+    response = requests.get(url, headers=headers)
     if response.status_code == 200:
         return response.json()
     else:
@@ -95,14 +98,14 @@ def extract_weather_data(weather_info):
     return wind, wind_direction, rain, temp, snow
 
 def get_airport_name(flight_data):
-    data = flight_data["response"]
+    data = flight_data[0]
 
-    dep_airport_name = data["dep_name"]
-    dep_city = data["dep_city"]
-    arr_airport_name = data["arr_name"]
-    arr_city = data["arr_city"]
-    arr_iata = data["arr_iata"]
-    dep_iata = data["dep_iata"]
+    dep_airport_name = data["departure"]["airport"]["name"]
+    dep_city = data["departure"]["airport"]["municipalityName"]
+    arr_airport_name = data["arrival"]["airport"]["iata"]
+    arr_city = data["arrival"]["airport"]["municipalityName"]
+    arr_iata = data["arrival"]["airport"]["iata"]
+    dep_iata = data["departure"]["airport"]["iata"]
 
     airport_info = {
         "dep_airport_name" : dep_airport_name,
@@ -111,18 +114,19 @@ def get_airport_name(flight_data):
         "arr_city" : arr_city,
         "arr_iata" : arr_iata,
         "dep_iata" : dep_iata,
-        "dep_date" : data["dep_time"],
-        "arr_date" : data["arr_time"],
-
+        "dep_date_utc" : data["departure"]["scheduledTime"]["utc"],
+        "arr_date_utc" : data["arrival"]["scheduledTime"]["utc"],
+        "dep_date_local" : data["departure"]["scheduledTime"]["local"],
+        "arr_date_local" : data["arrival"]["scheduledTime"]["local"]
     }
     return airport_info
 
 def extract_flight_data(flight_data):
-    data = flight_data["response"]
-    date_time = data["dep_time"] # date is in 2023-12-03 20:05
+    data = flight_data[0]
+    date_time = data["departure"]["scheduledTime"]["local"] # date is in 2023-12-03 20:05
     dep_date, dep_time = date_time.split()
 
-    _, arr_time = data["arr_time"].split()
+    _, arr_time = data["arrival"]["scheduledTime"]["local"].split()
 
     # get the day of week
     input_date = datetime.strptime(dep_date, '%Y-%m-%d')
@@ -130,14 +134,17 @@ def extract_flight_data(flight_data):
 
     # extract each value needed
     _, month, day = dep_date.split("-")
-    unique_carrier_id = data["airline_iata"]
-    flight_number = int(data["flight_number"])
-    origin_airport = data["dep_iata"]
-    destination_airport = data["arr_iata"]
+    unique_carrier_id = data["airline"]["iata"]
+    flight_number = int(data["number"][3:])
+    origin_airport = data["departure"]["airport"]["iata"]
+    destination_airport =data["arrival"]["airport"]["iata"]
 
     # for time, we convert it into minutes
     def convert_time_to_min(time):
-        hour, minute = time.split(":")
+        print(time)
+        time_list = time.split(":")
+        hour = time_list[0]
+        minute = time_list[1][:-3]
         return str(int(hour) * 60 + int(minute))
 
     dep_time = convert_time_to_min(dep_time)
@@ -198,9 +205,10 @@ def predict():
     #NEED TO PULL FLIGHT NUMBER FROM FRONTEND
     data = request.json
     flight_number = data["flight_number"]
+    flight_date = data["flight_date"]
 
 
-    flight_info = get_flight_info(flight_number, airlabs_api_key)
+    flight_info = get_flight_info(flight_number, flight_date, airlabs_api_key)
     flight_json = extract_flight_data(flight_info)
 
     airport_info = get_airport_name(flight_info)
